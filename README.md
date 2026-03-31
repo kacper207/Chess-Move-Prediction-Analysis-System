@@ -8,7 +8,7 @@
 
 ## How it works
 
-Games are streamed directly from compressed .pgn.zst files without loading everything into RAM. Moves are encoded using UCI notation and tokenized into a vocabulary of ~1,956 unique moves. Sequences of 20 moves are used as input to the LSTM, which predicts the most likely next move. The system supports two data sources — bulk PGN files for training a global model, and the Lichess API for analyzing a specific player.
+Games are streamed directly from compressed .pgn.zst files without loading everything into RAM. Moves are encoded using UCI notation and tokenized into a vocabulary of ~1,956 unique moves. Sequences of 20 moves are used as input to the LSTM, which predicts the most likely next move. The system supports two data sources - bulk PGN files for training a global model, and the Lichess API for analyzing a specific player.
 
 ## Key findings from EDA
 
@@ -17,18 +17,18 @@ Games are streamed directly from compressed .pgn.zst files without loading every
 - Draw games are significantly longer (median ~110 moves) than decisive games
 - ELO rating is the strongest predictor of game outcome
 - Opening choice (ECO code) has minimal impact on outcome at amateur level
-- Logistic regression baseline accuracy: 55.68% — confirming the need for sequence-based models
+- Logistic regression baseline accuracy: 55.68% - confirming the need for sequence-based models
 
 ## Tech stack
 
-- **python-chess** — PGN parsing, move validation, ECO codes
-- **PyTorch** — LSTM model training
-- **scikit-learn** — tokenization, logistic regression, evaluation metrics
-- **pandas / numpy** — data processing
-- **berserk** — Lichess API client
-- **zstandard** — streaming decompression of .pgn.zst files
-- **matplotlib** — data visualization
+- **python-chess** - PGN parsing, move validation, ECO codes
+- **PyTorch** - LSTM model training
+- **scikit-learn** - tokenization, logistic regression, evaluation metrics
+- **pandas / numpy** - data processing
+- **berserk** - Lichess API client
+- **zstandard** - streaming decompression of .pgn.zst files
+- **matplotlib** - data visualization
 
 ## Data
 
-Monthly PGN dumps from [database.lichess.org](https://database.lichess.org). Files are read in streaming mode — no full decompression required.
+Monthly PGN dumps from [database.lichess.org](https://database.lichess.org). Files are read in streaming mode - no full decompression required.
