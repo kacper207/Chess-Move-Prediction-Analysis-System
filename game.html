@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chess Predictor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
+<style>
+  :root {
+    --bg: #111;
+    --surface: #1c1c1c;
+    --surface2: #252525;
+    --border: #333;
+    --border2: #444;
+    --text: #f0f0f0;
+    --muted: #888;
+    --accent: #ddd;
+    --accent2: #fff;
+    --white-clr: #f0f0f0;
+    --black-clr: #222;
+    --win: #666;
+    --win-bg: #1e1e1e;
+    --lose: #555;
+    --lose-bg: #1a1a1a;
+    --draw-clr: #666;
+    --draw-bg: #1e1e1e;
+  }
+  .deco-gif {
+  position: fixed;
+  right: 600px;
+  top: 70%;
+  transform: translateY(-50%);
+  width: 800px;
+  opacity: 0.02;
+  pointer-events: none;
+  z-index: 10;
+}
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    font-size: 15px;
+  }
+
+  /* ── LAYOUT ── */
+  .page {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1.25rem;
+  }
+  .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    letter-spacing: -0.02em;
+    color: var(--accent);
+  }
+  .logo span { color: var(--text); }
+
+  .hud {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+  }
+  .hud-item {
+    text-align: center;
+  }
+  .hud-label {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: block;
+  }
+  .hud-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.2;
+  }
+  .hud-value.accent { color: var(--accent); }
+
+  /* ── MOVES SLIDER ── */
+  .config-bar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 16px;
+  }
+  .config-bar label {
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .config-bar input[type=range] {
+    flex: 1;
+    accent-color: #888;
+    cursor: pointer;
+    height: 4px;
+  }
+  .config-bar select {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    cursor: pointer;
+  }
+  .config-bar select:focus { outline: none; border-color: #888; }
+  .config-bar .val {
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    color: var(--accent2);
+    min-width: 32px;
+    text-align: right;
+  }
+
+  /* ── GAME AREA ── */
+  .game-area {
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  /* ── BOARD ── */
+  .board-col {}
+  #board {
+    width: 100% !important;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--border2);
+  }
+  /* override chessboard.js squares */
+  .board-b72b1 { border-radius: 6px; }
+
+  /* ── PLAYER BADGES ── */
+  .player-badge {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    background: var(--surface);
+  }
+  .player-badge:last-child { margin-bottom: 12px; }
+  .badge-color {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1px solid var(--border2);
+    flex-shrink: 0;
+  }
+  .badge-color.white { background: #f0ede8; }
+  .badge-color.black { background: #1a1917; border-color: #555; }
+  .badge-name {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+  }
+  .badge-elo {
+    font-size: 13px;
+    color: var(--accent);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* ── OPENING TAG ── */
+  .opening-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 5px 10px;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 14px;
+    font-family: 'DM Mono', monospace;
+  }
+  .opening-eco {
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  /* ── MOVE LIST ── */
+  .move-list-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    max-height: 140px;
+    overflow-y: auto;
+  }
+  .move-list-title {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .move-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .move-pair {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+  .move-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .move-token {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--text);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 2px 5px;
+  }
+  .move-token.last {
+    background: var(--border2);
+    color: var(--accent2);
+    border-color: var(--accent);
+  }
+
+  /* ── NAV CONTROLS ── */
+  .nav-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .nav-btn {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    border-radius: 4px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 18px;
+    transition: all 0.15s;
+    line-height: 1;
+  }
+  .nav-btn:hover { background: var(--surface2); color: var(--text); }
+  .nav-btn:disabled { opacity: 0.3; cursor: default; }
+
+  /* ── PREDICT PANEL ── */
+  .predict-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .predict-title {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .predict-btns {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+  .pred-btn {
+    padding: 14px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .pred-btn:hover:not(:disabled) { border-color: var(--border2); color: var(--text); background: var(--surface2); }
+  .pred-btn:disabled { cursor: default; }
+
+  .pred-btn.w { border-color: var(--border2); }
+  .pred-btn.w:hover:not(:disabled) { background: var(--surface2); border-color: #aaa; color: var(--text); }
+  .pred-btn.w.sel { background: var(--surface2); border-color: var(--text); color: var(--text); }
+
+  .pred-btn.b { border-color: var(--border2); }
+  .pred-btn.b:hover:not(:disabled) { background: var(--surface2); border-color: #aaa; color: var(--text); }
+  .pred-btn.b.sel { background: var(--surface2); border-color: var(--text); color: var(--text); }
+
+  .pred-btn.d:hover:not(:disabled) { background: var(--surface2); border-color: #aaa; color: var(--text); }
+  .pred-btn.d.sel { background: var(--surface2); border-color: var(--text); color: var(--text); }
+
+  .pred-icon { font-size: 20px; display: block; margin-bottom: 4px; }
+  .pred-label { font-size: 11px; }
+
+  .submit-btn {
+    width: 100%;
+    margin-top: 10px;
+    padding: 13px;
+    background: #333;
+    color: var(--text);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    letter-spacing: 0.02em;
+    transition: background 0.15s;
+  }
+  .submit-btn:hover { background: #444; }
+  .submit-btn:disabled { background: var(--surface); color: var(--muted); cursor: default; border-color: var(--border); }
+
+  /* ── RESULT PANEL ── */
+  .result-panel {
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 14px;
+    border: 1px solid;
+    display: none;
+  }
+  .result-panel.show { display: block; }
+  .result-panel.win  { background: #1e1e1e; border-color: #666; }
+  .result-panel.lose { background: #1a1a1a; border-color: #444; }
+  .result-panel.tie  { background: #1e1e1e; border-color: #555; }
+
+  .result-headline {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    margin-bottom: 10px;
+  }
+  .result-panel.win  .result-headline { color: #ddd; }
+  .result-panel.lose .result-headline { color: #999; }
+  .result-panel.tie  .result-headline { color: #bbb; }
+
+  .result-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .result-row strong { color: var(--text); font-weight: 500; }
+
+  /* ── AI confidence bar ── */
+  .conf-bars { margin-top: 12px; }
+  .conf-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12px; color: var(--muted); }
+  .conf-bar-wrap { flex: 1; background: var(--border); border-radius: 3px; height: 6px; overflow: hidden; }
+  .conf-bar { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+  .conf-bar.w { background: var(--white-clr); }
+  .conf-bar.b { background: #666; }
+  .conf-bar.d { background: var(--draw-clr); }
+  .conf-pct { min-width: 36px; text-align: right; font-family: 'DM Mono', monospace; font-size: 11px; }
+
+  /* ── NEXT BUTTON ── */
+  .next-btn {
+    width: 100%;
+    padding: 12px;
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--text);
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s;
+    display: none;
+    margin-top: 10px;
+  }
+  .next-btn.show { display: block !important; }
+  .next-btn:hover { background: var(--surface2); border-color: #aaa; color: var(--text); }
+
+  /* ── LOADING / ERROR ── */
+  .status-msg {
+    text-align: center;
+    padding: 3rem;
+    color: var(--muted);
+    font-size: 14px;
+    letter-spacing: 0.05em;
+  }
+  .status-msg.error { color: #e07878; }
+  .spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── AI THINKING ── */
+  .ai-thinking {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    display: none;
+    padding: 8px 0 4px;
+    letter-spacing: 0.05em;
+  }
+  .ai-thinking.show { display: block; }
+  .dot { animation: blink 1.2s infinite; }
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes blink { 0%,80%,100%{opacity:0.2} 40%{opacity:1} }
+
+  /* ── RIGHT COLUMN ── */
+  .right-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  /* SCROLL BAR */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="logo">Chess<span>Predictor</span></div>
+    <div class="hud">
+      <div class="hud-item">
+        <span class="hud-label">Twoje punkty</span>
+        <div class="hud-value accent" id="score">0</div>
+      </div>
+      <div class="hud-item">
+        <span class="hud-label">AI punkty</span>
+        <div class="hud-value" id="ai-score">0</div>
+      </div>
+      <div class="hud-item">
+        <span class="hud-label">Runda</span>
+        <div class="hud-value" id="round">1</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="config-bar">
+    <label>Ruchów do pokazania</label>
+    <input type="range" id="n-moves-slider" min="5" max="35" value="15" step="1">
+    <div class="val" id="n-moves-val">15</div>
+
+  </div>
+
+  <div id="status-area" class="status-msg">
+    <div class="spinner"></div><br>Ładowanie partii z Lichess…
+  </div>
+
+  <div id="game-area" class="game-area" style="display:none">
+
+    <!-- LEWA: szachownica + navigacja -->
+    <div class="board-col">
+      <div class="player-badge">
+        <div class="badge-color black"></div>
+        <span class="badge-name" id="black-name">—</span>
+        <span class="badge-elo" id="black-elo">—</span>
+      </div>
+      <div id="board"></div>
+      <div class="player-badge" style="margin-top:8px; margin-bottom:0">
+        <div class="badge-color white"></div>
+        <span class="badge-name" id="white-name">—</span>
+        <span class="badge-elo" id="white-elo">—</span>
+      </div>
+    </div>
+
+    <!-- PRAWA: info + predykcja + wynik -->
+    <div class="right-col">
+
+      <div class="opening-tag">
+        <span class="opening-eco" id="eco-code">?</span>
+        <span id="opening-name">—</span>
+      </div>
+
+      <div class="move-list-wrap">
+        <div class="move-list-title">Pierwsze ruchy (UCI)</div>
+        <div class="move-list" id="move-list"></div>
+      </div>
+
+      <div class="nav-row">
+        <button class="nav-btn" id="btn-start" title="Początek">⏮</button>
+        <button class="nav-btn" id="btn-prev"  title="Poprzedni">◀</button>
+        <button class="nav-btn" id="btn-next"  title="Następny">▶</button>
+        <button class="nav-btn" id="btn-end"   title="Koniec widocznych ruchów">⏭</button>
+      </div>
+
+      <div class="predict-panel" id="predict-panel">
+        <div class="predict-title">Kto wygra?</div>
+        <div class="predict-btns">
+          <button class="pred-btn w" id="btn-white">
+            <span class="pred-icon">♔</span>
+            <span class="pred-label">Białe wygrają</span>
+          </button>
+          <button class="pred-btn b" id="btn-black">
+            <span class="pred-icon">♚</span>
+            <span class="pred-label">Czarne wygrają</span>
+          </button>
+          <button class="pred-btn d" id="btn-draw">
+            <span class="pred-icon">⚖</span>
+            <span class="pred-label">Remis</span>
+          </button>
+        </div>
+        <div class="ai-thinking" id="ai-thinking">
+          Model myśli<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
+        </div>
+        <button class="submit-btn" id="submit-btn" disabled>Zatwierdź →</button>
+      </div>
+
+      <div class="result-panel" id="result-panel">
+        <div class="result-headline" id="result-headline">—</div>
+        <div class="result-row">
+          <span>Rzeczywisty wynik:</span>
+          <strong id="actual-result">—</strong>
+        </div>
+        <div class="result-row">
+          <span>Twoja odpowiedź:</span>
+          <strong id="your-answer">—</strong>
+        </div>
+        <div class="result-row">
+          <span>Odpowiedź AI (modelu):</span>
+          <strong id="ai-answer">—</strong>
+        </div>
+        <div class="conf-bars" id="conf-bars">
+          <div style="font-size:11px; color:var(--muted); margin-bottom:6px; letter-spacing:0.05em; text-transform:uppercase;">Pewność modelu</div>
+          <div class="conf-row">
+            <span style="min-width:52px">Białe</span>
+            <div class="conf-bar-wrap"><div class="conf-bar w" id="cbar-w" style="width:0%"></div></div>
+            <span class="conf-pct" id="cpct-w">0%</span>
+          </div>
+          <div class="conf-row">
+            <span style="min-width:52px">Czarne</span>
+            <div class="conf-bar-wrap"><div class="conf-bar b" id="cbar-b" style="width:0%"></div></div>
+            <span class="conf-pct" id="cpct-b">0%</span>
+          </div>
+          <div class="conf-row">
+            <span style="min-width:52px">Remis</span>
+            <div class="conf-bar-wrap"><div class="conf-bar d" id="cbar-d" style="width:0%"></div></div>
+            <span class="conf-pct" id="cpct-d">0%</span>
+          </div>
+        </div>
+      </div>
+
+      <button class="next-btn" id="next-btn">Następna partia →</button>
+
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
+<script>
+const API = 'http://localhost:8000';
+
+let state = {
+  game: null,
+  chess: null,
+  board: null,
+  viewIdx: 0,
+  maxIdx: 0,
+  playerPick: null,
+  submitted: false,
+  score: 0,
+  aiScore: 0,
+  round: 1,
+  nMoves: 15,
+};
+
+const LABEL = { white: '♔ Białe', black: '♚ Czarne', draw: '⚖ Remis' };
+
+// ── slider ─────────────────────────────────────────────────────────────────
+const slider = document.getElementById('n-moves-slider');
+const sliderVal = document.getElementById('n-moves-val');
+slider.addEventListener('input', () => {
+  state.nMoves = +slider.value;
+  sliderVal.textContent = slider.value;
+});
+
+// ───────────────────────────────────────────────────────────────────
+async function init() {
+  showStatus('Ładowanie partii z Lichess…');
+  try {
+    await loadGame();
+  } catch(e) {
+    showError(e.message || 'Nie można połączyć się z serwerem. Upewnij się że backend działa na localhost:8000');
+  }
+}
+
+async function loadGame() {
+  showStatus('Ładowanie partii z Lichess…');
+  const resp = await fetch(`${API}/api/game?n_moves=${state.nMoves}`);
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => ({}));
+    throw new Error(body.detail || `HTTP ${resp.status}`);
+  }
+  const game = await resp.json();
+  state.game = game;
+  state.playerPick = null;
+  state.submitted = false;
+  state.viewIdx = game.shown_moves.length;  // start at last shown move
+  state.maxIdx  = game.shown_moves.length;
+
+  // rebuild chess position
+  state.chess = new Chess();
+  for (const m of game.shown_moves) {
+    try { state.chess.move(m, { sloppy: true }); } catch(e) {}
+  }
+
+  renderGame();
+}
+
+// ── RENDER ─────────────────────────────────────────────────────────────────
+function renderGame() {
+  document.getElementById('status-area').style.display = 'none';
+  document.getElementById('game-area').style.display = 'grid';
+
+  document.getElementById('white-name').textContent = state.game.white_player;
+  document.getElementById('black-name').textContent = state.game.black_player;
+  document.getElementById('white-elo').textContent  = state.game.white_elo;
+  document.getElementById('black-elo').textContent  = state.game.black_elo;
+  document.getElementById('eco-code').textContent    = state.game.opening_eco;
+  document.getElementById('opening-name').textContent = state.game.opening_name;
+
+  renderBoard();
+  renderMoves();
+  renderNav();
+  resetPredictPanel();
+  hideResult();
+  document.getElementById('next-btn').classList.remove('show');
+
+  document.getElementById('score').textContent    = state.score;
+  document.getElementById('ai-score').textContent = state.aiScore;
+  document.getElementById('round').textContent    = state.round;
+}
+
+function renderBoard() {
+  // build chess up to viewIdx
+  const ch = new Chess();
+  for (let i = 0; i < state.viewIdx; i++) {
+    try { ch.move(state.game.shown_moves[i], { sloppy: true }); } catch(e) {}
+  }
+  const fen = ch.fen();
+
+  if (state.board) {
+    state.board.position(fen, false);
+  } else {
+    state.board = Chessboard('board', {
+      position: fen,
+      pieceTheme: 'https://lichess1.org/assets/piece/cburnett/{piece}.svg',
+      showNotation: true,
+    });
+  }
+}
+
+function renderMoves() {
+  const container = document.getElementById('move-list');
+  container.innerHTML = '';
+  const moves = state.game.shown_moves;
+
+  for (let i = 0; i < moves.length; i += 2) {
+    const pairDiv = document.createElement('div');
+    pairDiv.className = 'move-pair';
+
+    const num = document.createElement('span');
+    num.className = 'move-num';
+    num.textContent = `${Math.floor(i/2)+1}.`;
+    pairDiv.appendChild(num);
+
+    [moves[i], moves[i+1]].forEach((m, j) => {
+      if (!m) return;
+      const idx = i + j;
+      const tok = document.createElement('span');
+      tok.className = 'move-token' + (idx === state.viewIdx - 1 ? ' last' : '');
+      tok.textContent = m;
+      pairDiv.appendChild(tok);
+    });
+
+    container.appendChild(pairDiv);
+  }
+  container.scrollTop = container.scrollHeight;
+}
+
+function renderNav() {
+  document.getElementById('btn-start').disabled = state.viewIdx <= 0;
+  document.getElementById('btn-prev').disabled  = state.viewIdx <= 0;
+  document.getElementById('btn-next').disabled  = state.viewIdx >= state.maxIdx;
+  document.getElementById('btn-end').disabled   = state.viewIdx >= state.maxIdx;
+}
+
+function resetPredictPanel() {
+  document.getElementById('predict-panel').style.display = 'block';
+  ['btn-white','btn-black','btn-draw'].forEach(id => {
+    const b = document.getElementById(id);
+    b.classList.remove('sel');
+    b.disabled = false;
+  });
+  document.getElementById('submit-btn').disabled = true;
+  document.getElementById('ai-thinking').classList.remove('show');
+}
+
+function hideResult() {
+  const rp = document.getElementById('result-panel');
+  rp.className = 'result-panel';
+}
+
+// ── NAV BUTTONS ────────────────────────────────────────────────────────────
+document.getElementById('btn-start').addEventListener('click', () => {
+  state.viewIdx = 0; renderBoard(); renderMoves(); renderNav();
+});
+document.getElementById('btn-prev').addEventListener('click', () => {
+  if (state.viewIdx > 0) { state.viewIdx--; renderBoard(); renderMoves(); renderNav(); }
+});
+document.getElementById('btn-next').addEventListener('click', () => {
+  if (state.viewIdx < state.maxIdx) { state.viewIdx++; renderBoard(); renderMoves(); renderNav(); }
+});
+document.getElementById('btn-end').addEventListener('click', () => {
+  state.viewIdx = state.maxIdx; renderBoard(); renderMoves(); renderNav();
+});
+
+// ── PREDICT BUTTONS ────────────────────────────────────────────────────────
+['btn-white','btn-black','btn-draw'].forEach((id, i) => {
+  const val = ['white','black','draw'][i];
+  document.getElementById(id).addEventListener('click', () => {
+    if (state.submitted) return;
+    state.playerPick = val;
+    ['btn-white','btn-black','btn-draw'].forEach(bid => document.getElementById(bid).classList.remove('sel'));
+    document.getElementById(id).classList.add('sel');
+    document.getElementById('submit-btn').disabled = false;
+  });
+});
+
+document.getElementById('submit-btn').addEventListener('click', async () => {
+  if (!state.playerPick || state.submitted) return;
+  state.submitted = true;
+
+  ['btn-white','btn-black','btn-draw','submit-btn'].forEach(id => {
+    document.getElementById(id).disabled = true;
+  });
+  document.getElementById('ai-thinking').classList.add('show');
+
+  let aiPred = null;
+  let confidence = null;
+  try {
+    const resp = await fetch(`${API}/api/predict`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        moves_uci:   state.game.shown_moves,
+        eco:         state.game.opening_eco,
+        total_moves: state.game.total_moves,
+      })
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data.prediction && ['white','black','draw'].includes(data.prediction)) {
+        aiPred = data.prediction;
+        confidence = data.confidence;
+      }
+    }
+  } catch(e) { /* model niedostepny */ }
+
+  document.getElementById('ai-thinking').classList.remove('show');
+  showResult(state.playerPick, aiPred, state.game.actual_result, confidence);
+});
+
+function showResult(player, ai, actual, conf) {
+  const playerCorrect = player === actual;
+  const aiCorrect     = (ai !== null) && (ai === actual);
+  const modelAvail    = ai !== null;
+
+  if (playerCorrect) state.score++;
+  if (aiCorrect)     state.aiScore++;
+
+  let cls;
+  if (!modelAvail) {
+    cls = playerCorrect ? 'win' : 'lose';
+  } else {
+    cls = playerCorrect && !aiCorrect ? 'win' :
+          !playerCorrect && aiCorrect ? 'lose' : 'tie';
+  }
+
+  const rp = document.getElementById('result-panel');
+  rp.className = 'result-panel show ' + cls;
+
+  const headlines = {
+    win:  '✓ Wygrałeś z modelem!',
+    lose: '✗ Model miał rację, ty nie.',
+    tie:  playerCorrect ? '= Oboje trafiliście!' : '= Oboje się myliliście.',
+  };
+  document.getElementById('result-headline').textContent = headlines[cls];
+  document.getElementById('actual-result').textContent = LABEL[actual] || actual;
+  document.getElementById('your-answer').textContent   = LABEL[player] + (playerCorrect ? ' ✓' : ' ✗');
+  document.getElementById('ai-answer').textContent     = modelAvail
+    ? (LABEL[ai] + (aiCorrect ? ' ✓' : ' ✗'))
+    : '— (backend niedostępny)';
+
+  const barsEl = document.getElementById('conf-bars');
+  if (conf) {
+    document.getElementById('cbar-w').style.width = conf.white + '%';
+    document.getElementById('cbar-b').style.width = conf.black + '%';
+    document.getElementById('cbar-d').style.width = conf.draw  + '%';
+    document.getElementById('cpct-w').textContent = conf.white + '%';
+    document.getElementById('cpct-b').textContent = conf.black + '%';
+    document.getElementById('cpct-d').textContent = conf.draw  + '%';
+    barsEl.style.display = 'block';
+  } else {
+    barsEl.style.display = 'none';
+  }
+
+  document.getElementById('score').textContent    = state.score;
+  document.getElementById('ai-score').textContent = state.aiScore;
+  document.getElementById('predict-panel').style.display = 'none';
+
+  const nb = document.getElementById('next-btn');
+  nb.style.display = 'block';
+  nb.classList.add('show');
+}
+
+// ── NEXT ───────────────────────────────────────────────────────────────────
+document.getElementById('next-btn').addEventListener('click', async () => {
+  state.round++;
+  document.getElementById('round').textContent = state.round;
+  try {
+    await loadGame();
+  } catch(e) {
+    showError(e.message || 'Błąd ładowania kolejnej partii.');
+  }
+});
+
+// ── STATUS helpers ─────────────────────────────────────────────────────────
+function showStatus(msg) {
+  document.getElementById('status-area').innerHTML = `<div class="spinner"></div><br>${msg}`;
+  document.getElementById('status-area').className = 'status-msg';
+  document.getElementById('status-area').style.display = 'block';
+  document.getElementById('game-area').style.display = 'none';
+}
+function showError(msg) {
+  document.getElementById('status-area').innerHTML = `
+    <div style="color:#aaa; margin-bottom:16px">⚠ ${msg}</div>
+    <button onclick="retryLoad()" style="
+      background:#333; border:1px solid #555; color:#f0f0f0;
+      padding:10px 24px; border-radius:6px; cursor:pointer;
+      font-size:14px; font-family:inherit;
+    ">Spróbuj ponownie →</button>
+  `;
+  document.getElementById('status-area').className = 'status-msg error';
+  document.getElementById('status-area').style.display = 'block';
+  document.getElementById('game-area').style.display = 'none';
+}
+
+async function retryLoad() {
+  try {
+    await loadGame();
+  } catch(e) {
+    showError(e.message || 'Błąd ładowania partii.');
+  }
+}
+
+
+
+init();
+</script>
+<img class="deco-gif" src="https://media1.tenor.com/m/0Z3-kVYzCNAAAAAC/anime.gif" alt="">
+</body>
+</html>
